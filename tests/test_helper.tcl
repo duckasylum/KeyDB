@@ -65,6 +65,7 @@ set ::all_tests {
     unit/pubsub
     unit/slowlog
     unit/scripting
+    unit/lua-lexer
     unit/maxmemory
     unit/flash
     unit/introspection
