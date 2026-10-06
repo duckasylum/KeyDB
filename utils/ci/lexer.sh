@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Portable build, bounded lexer, and scripting validation.
+# Portable build, lexer, scripting, and active-active validation.
 set -Eeuo pipefail
 
 phase=${1:-all}
 case "$phase" in
-    build|test|scripting|scripting-tls|all) ;;
-    *) printf 'Usage: %s [build|test|scripting|scripting-tls|all]\n' "$0" >&2; exit 2 ;;
+    build|test|scripting|scripting-tls|active-active|all) ;;
+    *) printf 'Usage: %s [build|test|scripting|scripting-tls|active-active|all]\n' "$0" >&2; exit 2 ;;
 esac
 
 repo_root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)
@@ -29,17 +29,25 @@ if [[ "$phase" == build || "$phase" == all ]]; then
         2>&1 | tee "$log_dir/build.log"
     src/keydb-server --version | tee "$log_dir/version.log"
     sha256sum src/keydb-server tests/unit/lua-lexer.tcl tests/unit/scripting.tcl \
+        tests/integration/replication-active.tcl tests/integration/replication-multimaster.tcl \
         | tee "$log_dir/checksums.log"
 fi
 
-if [[ "$phase" == test || "$phase" == all || "$phase" == scripting || "$phase" == scripting-tls ]]; then
-    test_unit=unit/lua-lexer
+if [[ "$phase" == test || "$phase" == all || "$phase" == scripting || "$phase" == scripting-tls || "$phase" == active-active ]]; then
+    test_units=(unit/lua-lexer)
     test_log=lexer-tests.log
     if [[ "$phase" == scripting || "$phase" == scripting-tls ]]; then
-        test_unit=unit/scripting
+        test_units=(unit/scripting)
         test_log=$phase-tests.log
     fi
-    test_args=(--single "$test_unit" --clients 1 --verbose --config server-threads 3)
+    if [[ "$phase" == active-active ]]; then
+        test_units=(integration/replication-active integration/replication-multimaster)
+        test_log=active-active-tests.log
+    fi
+    test_args=(--clients 1 --verbose --config server-threads 3)
+    for test_unit in "${test_units[@]}"; do
+        test_args+=(--single "$test_unit")
+    done
     if [[ "$phase" == scripting-tls ]]; then
         ./utils/gen-test-certs.sh 2>&1 | tee "$log_dir/certificates.log"
         test_args+=(--tls)
