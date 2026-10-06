@@ -1,10 +1,20 @@
 name: CI
 
-on: [push, pull_request]
+# Full compatibility validation is a separate checkpoint from draft CI.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
 
   test-ubuntu-latest:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -36,6 +46,7 @@ jobs:
           ./runtest-rotation
         
   build-ubuntu-old:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v2
@@ -49,6 +60,7 @@ jobs:
         make -j2
 
   build-macos-latest:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: macos-latest
     steps:
     - uses: actions/checkout@v2
@@ -58,6 +70,7 @@ jobs:
       run: make KEYDB_CFLAGS='-Werror' KEYDB_CXXFLAGS='-Werror' -j2
 
   build-libc-malloc:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2

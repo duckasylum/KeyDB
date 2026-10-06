@@ -1,0 +1,78 @@
+name: KeyDB patch validation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lexer-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  lexer:
+    name: Build, scripting, and active-active tests (libc)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config libssl-dev uuid-dev libcurl4-openssl-dev zlib1g-dev tcl tcl-tls
+      - name: Build
+        run: bash utils/ci/lexer.sh build
+      - name: Focused lexer tests
+        run: bash utils/ci/lexer.sh test
+      - name: Full scripting suite (TCP)
+        run: bash utils/ci/lexer.sh scripting
+      - name: Full scripting suite (TLS)
+        run: bash utils/ci/lexer.sh scripting-tls
+      - name: Active-active and multi-master suites (TCP)
+        run: bash utils/ci/lexer.sh active-active
+      - name: Retain validation logs
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: lexer-logs-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ci-logs/
+          if-no-files-found: warn
+          retention-days: 30
+
+  lexer-boundaries:
+    name: CVE-2025-46819 large-memory regressions (libc)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config libssl-dev uuid-dev libcurl4-openssl-dev zlib1g-dev tcl
+      - name: Build patched KeyDB
+        run: bash utils/ci/lexer.sh build
+      - name: Upstream-derived boundary regressions
+        run: bash utils/ci/lexer.sh boundaries
+      - name: Retain boundary validation logs
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: boundary-logs-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ci-logs/
+          if-no-files-found: warn
+          retention-days: 30

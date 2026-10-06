@@ -65,6 +65,8 @@ set ::all_tests {
     unit/pubsub
     unit/slowlog
     unit/scripting
+    unit/lua-lexer
+    unit/lua-lexer-boundaries
     unit/maxmemory
     unit/flash
     unit/introspection
@@ -113,6 +115,7 @@ set ::no_latency 0
 set ::allowtags {}
 set ::only_tests {}
 set ::single_tests {}
+set ::large_memory 0
 set ::run_solo_tests {}
 set ::skip_till ""
 set ::external 0; # If "1" this means, we are running against external instance
@@ -581,6 +584,7 @@ proc print_help_screen {} {
         "--durable          suppress test crashes and keep running"
         "--stack-logging    Enable OSX leaks/malloc stack logging."
         "--accurate         Run slow randomized tests for more iterations."
+        "--large-memory     Enable tests requiring several GiB of RAM."
         "--quiet            Don't show individual tests."
         "--single <unit>    Just execute the specified unit (see next option). This option can be repeated."
         "--verbose          Increases verbosity."
@@ -671,6 +675,8 @@ for {set j 0} {$j < [llength $argv]} {incr j} {
     } elseif {$opt eq {--single}} {
         lappend ::single_tests $arg
         incr j
+    } elseif {$opt eq {--large-memory}} {
+        set ::large_memory 1
     } elseif {$opt eq {--only}} {
         lappend ::only_tests $arg
         incr j
