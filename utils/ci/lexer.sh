@@ -4,8 +4,8 @@ set -Eeuo pipefail
 
 phase=${1:-all}
 case "$phase" in
-    build|test|scripting|scripting-tls|active-active|all) ;;
-    *) printf 'Usage: %s [build|test|scripting|scripting-tls|active-active|all]\n' "$0" >&2; exit 2 ;;
+    build|test|scripting|scripting-tls|active-active|boundaries|all) ;;
+    *) printf 'Usage: %s [build|test|scripting|scripting-tls|active-active|boundaries|all]\n' "$0" >&2; exit 2 ;;
 esac
 
 repo_root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)
@@ -30,10 +30,11 @@ if [[ "$phase" == build || "$phase" == all ]]; then
     src/keydb-server --version | tee "$log_dir/version.log"
     sha256sum src/keydb-server tests/unit/lua-lexer.tcl tests/unit/scripting.tcl \
         tests/integration/replication-active.tcl tests/integration/replication-multimaster.tcl \
+        tests/unit/lua-lexer-boundaries.tcl \
         | tee "$log_dir/checksums.log"
 fi
 
-if [[ "$phase" == test || "$phase" == all || "$phase" == scripting || "$phase" == scripting-tls || "$phase" == active-active ]]; then
+if [[ "$phase" == test || "$phase" == all || "$phase" == scripting || "$phase" == scripting-tls || "$phase" == active-active || "$phase" == boundaries ]]; then
     test_units=(unit/lua-lexer)
     test_log=lexer-tests.log
     if [[ "$phase" == scripting || "$phase" == scripting-tls ]]; then
@@ -44,10 +45,18 @@ if [[ "$phase" == test || "$phase" == all || "$phase" == scripting || "$phase" =
         test_units=(integration/replication-active integration/replication-multimaster)
         test_log=active-active-tests.log
     fi
+    if [[ "$phase" == boundaries ]]; then
+        test_units=(unit/lua-lexer-boundaries)
+        test_log=boundary-tests.log
+        free -b | tee "$log_dir/memory-before-boundaries.log"
+    fi
     test_args=(--clients 1 --verbose --config server-threads 3)
     for test_unit in "${test_units[@]}"; do
         test_args+=(--single "$test_unit")
     done
+    if [[ "$phase" == boundaries ]]; then
+        test_args+=(--large-memory --timeout 900)
+    fi
     if [[ "$phase" == scripting-tls ]]; then
         ./utils/gen-test-certs.sh 2>&1 | tee "$log_dir/certificates.log"
         test_args+=(--tls)

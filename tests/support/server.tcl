@@ -183,6 +183,11 @@ proc tags_acceptable {err_return} {
         }
     }
 
+    if {!$::large_memory && [lsearch -exact $::tags "large-memory"] >= 0} {
+        set err "large memory flag not provided"
+        return 0
+    }
+
     return 1
 }
 
