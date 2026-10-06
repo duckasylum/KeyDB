@@ -1,4 +1,4 @@
-name: Focused Lua lexer
+name: Lua scripting validation
 
 on:
   push:
@@ -20,7 +20,7 @@ defaults:
 
 jobs:
   lexer:
-    name: TLS build and bounded lexer tests (libc)
+    name: TLS build, lexer, and scripting tests (libc)
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -31,11 +31,15 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential pkg-config libssl-dev uuid-dev libcurl4-openssl-dev zlib1g-dev tcl
+          sudo apt-get install -y build-essential pkg-config libssl-dev uuid-dev libcurl4-openssl-dev zlib1g-dev tcl tcl-tls
       - name: Build
         run: bash utils/ci/lexer.sh build
       - name: Focused lexer tests
         run: bash utils/ci/lexer.sh test
+      - name: Full scripting suite (TCP)
+        run: bash utils/ci/lexer.sh scripting
+      - name: Full scripting suite (TLS)
+        run: bash utils/ci/lexer.sh scripting-tls
       - name: Retain validation logs
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
