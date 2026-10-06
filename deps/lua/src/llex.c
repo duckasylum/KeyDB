@@ -138,6 +138,7 @@ static void inclinenumber (LexState *ls) {
 
 
 void luaX_setinput (lua_State *L, LexState *ls, ZIO *z, TString *source) {
+  ls->t.token = 0;
   ls->decpoint = '.';
   ls->L = L;
   ls->lookahead.token = TK_EOS;  /* no look-ahead token */
@@ -214,7 +215,6 @@ static void read_numeral (LexState *ls, SemInfo *seminfo) {
 */
 static size_t skip_sep (LexState *ls) {
   size_t count = 0;
-  int count = 0;
   int s = ls->current;
   lua_assert(s == '[' || s == ']');
   save_and_next(ls);
@@ -246,7 +246,7 @@ static void read_long_string (LexState *ls, SemInfo *seminfo, size_t sep) {
           save_and_next(ls);  /* skip 2nd `[' */
           cont++;
 #if LUA_COMPAT_LSTR == 1
-          if (sep == 0)
+          if (sep == 2)
             luaX_lexerror(ls, "nesting of [[...]] is deprecated", '[');
 #endif
         }
@@ -258,7 +258,7 @@ static void read_long_string (LexState *ls, SemInfo *seminfo, size_t sep) {
           save_and_next(ls);  /* skip 2nd `]' */
 #if defined(LUA_COMPAT_LSTR) && LUA_COMPAT_LSTR == 2
           cont--;
-          if (sep == 0 && cont >= 0) break;
+          if (sep == 2 && cont >= 0) break;
 #endif
           goto endloop;
         }
